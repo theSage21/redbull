@@ -8,25 +8,52 @@ Quickly develop JSON apis.
 - Auto Options
 
 
-Usage
+Write a minimal api
 -----
 
 ```python
-from redbull import Manager
 import bottle
+from redbull import Manager
 
 mg = Manager(bottle.Bottle())
 
 @mg.api
 def say_hi():
-    "says hi"
+    "says hi to people"
     return 'hi'
 
 mg.add_cors()
 mg.app.run()
 ```
 
-This creates a bottle server with the `say_hi` function being
-served at `/say/hi` URI under a `POST` method. If the method is
-queried with an `OPTIONS` request, it returns the docstring of the
-function.
+```python
+import requests
+
+root = 'http://something.com'
+print(requests.options(root+'/say/hi').text)
+# says hi to people
+
+print(requests.post(root+'/say/hi').text)
+# hi
+```
+
+Accessing JSON
+---------
+
+```python
+
+@mg.api
+def say_hi_if_they_say_please():
+    "says hi only if you say please"
+    please, name = mg.json_get('please', 'name')
+    if please:
+        return f'hi {name}'
+    return ''
+```
+
+```python
+import requests
+
+requests.post(root+'/say/hi/if/they/say/please', json={"please": True,
+                                                       "name": "something"})
+```
