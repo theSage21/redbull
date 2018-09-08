@@ -1,23 +1,8 @@
-RedBull
-=======
-
-Quickly develop JSON apis.
-
-
-- Auto OPTIONS
-- All APIs are JSON, POST.
-- Using static types APIs are auto-documented.
-- You're not locked in. You can still code the old way.
-
-
-Example
------
-
-```python
 import bottle
 from redbull import Manager
 
 mg = Manager(bottle.Bottle())
+
 
 @mg.api
 def say_hi(name: str, please: bool):
@@ -26,6 +11,6 @@ def say_hi(name: str, please: bool):
         return 'hi ' + name
     return 'um hmm'
 
+
 mg.add_cors()
 mg.app.run()
-```
