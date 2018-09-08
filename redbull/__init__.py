@@ -6,8 +6,9 @@ from bottlecors import add_cors, abort
 
 
 class Manager:
-    def __init__(self, bottleapp):
+    def __init__(self, bottleapp, *, apiversion='1'):
         self.app = bottleapp
+        self.version = str(apiversion)
 
     def __create_protected_function(self, fn):
         if not hasattr(fn, '__kwdefaults__'):
@@ -55,7 +56,7 @@ class Manager:
 
     def api(self, fn):
         uri = fn.__name__.replace('_', '/')
-        uri = '/' + uri.lstrip('/')
+        uri = '/' + self.version + '/' + uri.lstrip('/')
         fn = self.__create_protected_function(fn)
         fn = self.app.post(uri)(fn)
         return fn

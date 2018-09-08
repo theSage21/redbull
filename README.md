@@ -17,7 +17,8 @@ Example
 import bottle
 from redbull import Manager
 
-mg = Manager(bottle.Bottle())
+mg = Manager(bottle.Bottle(),
+             apiversion='1')
 
 @mg.api
 def say_hi(name: str, please: bool):

@@ -1,7 +1,7 @@
 import requests
 
 
-root = 'http://localhost:8080'
+root = 'http://localhost:8080/1'
 
 
 def test_options_works():
