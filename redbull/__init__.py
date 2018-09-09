@@ -62,5 +62,18 @@ class Manager:
         return fn
 
     def add_cors(self, **kw):
+        apidocstrings = {}
+        for route in self.app.routes:
+            apidocstrings[route.rule, route.method] = route.callback.__doc__
         self.app = add_cors(self.app, **kw)
+
+        @self.app.get(f'/{self.version}/docs')
+        def doc_fn():
+            docs = f'''<html> <body> <h1> API Docs version {self.version}</h1>'''
+            docs += '''Calling each API with the OPTIONS method return's it's documentation'''
+            for k, v in apidocstrings.items():
+                docs += f'''<h2>{k[1]}  {k[0]}</h2><pre>{v}</pre><hr>'''
+            docs += ''' </body> </html> '''
+            return docs
+
         return self.app
