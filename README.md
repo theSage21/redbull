@@ -20,6 +20,10 @@ from redbull import Manager
 mg = Manager(bottle.Bottle(),
              apiversion='1')
 
+# The function name say_hi becomes the api say/hi
+# the args are treated as JSON keys. All args must by type annotated
+# optional args are supported
+# Simply return dict/string. Redbull wraps it for you in the appropriate object
 @mg.api
 def say_hi(name: str, please: bool):
     "Says hi if you say please"
@@ -27,6 +31,7 @@ def say_hi(name: str, please: bool):
         return 'hi ' + name
     return 'um hmm'
 
+# ADD a generous CORS for all routes using the OPTIONS method
 mg.add_cors()
 mg.app.run()
 ```
@@ -42,13 +47,18 @@ from redbull import Manager
 mg = Manager(web.Application(),
              apiversion='1')
 
+# The function name say_hi becomes the api say/hi
+# the args are treated as JSON keys. All args must by type annotated
+# optional args are supported
+# Simply return dict/string. Redbull wraps it for you in the appropriate object
 @mg.api
-async def say_hi(name: str, please: bool):
+async def say_hi(name: str, please: bool, lastname: str='Snow'):
     "Says hi if you say please"
     if please:
         return 'hi ' + name
     return 'um hmm'
 
+# ADD a generous CORS for all routes using the OPTIONS method
 mg.add_cors()
 web.run_app(mg.app)
 ```
