@@ -16,7 +16,6 @@ class WrongJson(Exception):
     pass
 
 
-
 class Manager:
     def __init__(self, app, *, apiversion='1'):
         self.app = app
@@ -81,7 +80,9 @@ class Manager:
                     args = self.__get_args_from_json(j, anno, fsig)
                 except WrongJson as e:
                     abort(400, str(e))
-                return fn(**args)
+                ret = fn(**args)
+                ret = 'ok' if ret is None else ret
+                return ret
         elif self.kind == 'aio':
             @wraps(fn)
             async def newfn(request):
@@ -93,6 +94,7 @@ class Manager:
                 except WrongJson as e:
                     raise aioweb.HTTPBadRequest(text=str(e))
                 ret = await fn(**args)
+                ret = 'ok' if ret is None else ret
                 return aioweb.json_response(ret)
 
         doc = f'''

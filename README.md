@@ -24,6 +24,10 @@ mg = Manager(bottle.Bottle(),
 # the args are treated as JSON keys. All args must by type annotated
 # optional args are supported
 # Simply return dict/string. Redbull wraps it for you in the appropriate object
+# The docstring will be provided when the path is called with an OPTIONS method
+
+# In addition the API does not have to return anything. If nothing (None) is
+# returned an 'ok' string is returned automatically
 @mg.api
 def say_hi(name: str, please: bool):
     "Says hi if you say please"
