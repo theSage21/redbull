@@ -10,6 +10,7 @@ except ImportError:
 from inspect import signature, _empty
 from functools import wraps
 from typing import get_type_hints
+from .doc_html import gen_doc_html
 
 
 class WrongJson(Exception):
@@ -133,3 +134,16 @@ class Manager:
             print(method, rule)
 
         return self.app
+
+    def add_docs(self):
+        api_list = list(sorted([url for url, _, _ in self.__get_routes()]))
+        if self.kind == 'bottle':
+            @self.app.get(f'/{self.version}/docs')
+            def docs():
+                return gen_doc_html(self.version, api_list)
+        elif self.kind == 'aio':
+            async def docgen(request):
+                return aioweb.Response(text=gen_doc_html(self.version, api_list),
+                                       content_type='text/html')
+
+            self.app.router.add_get(f'/{self.version}/docs', docgen)

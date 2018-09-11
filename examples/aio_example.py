@@ -14,4 +14,5 @@ async def say_hi(name: str, please: bool):
 
 
 mg.add_cors()
+mg.add_docs()
 web.run_app(mg.app)

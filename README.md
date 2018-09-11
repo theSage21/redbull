@@ -6,7 +6,7 @@ Quickly develop JSON apis.
 
 - Auto OPTIONS
 - All APIs are JSON, POST.
-- Using static types APIs are auto-documented.
+- Using static types APIs are auto-documented at `/<version>/docs`
 - You're not locked in. You can still code the old way.
 
 
