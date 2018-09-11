@@ -9,6 +9,9 @@ def test_options_works():
     assert r.status_code == 200
     assert "Says hi if you say please" in r.text
     assert "name" in r.text
+    assert "please" in r.text
+    assert "str" in r.text
+    assert "bool" in r.text
 
 
 def test_post_with_args_works():
@@ -26,3 +29,11 @@ def test_wrong_type_raises_error():
     d = {"name": 1, 'please': False}
     r = requests.post(root+'/say/hi', json=d)
     assert r.status_code == 400
+    assert 'name' in r.text
+
+
+def test_missing_type_raises_error():
+    d = {'please': False}
+    r = requests.post(root+'/say/hi', json=d)
+    assert r.status_code == 400
+    assert 'name' in r.text

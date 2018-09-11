@@ -1,16 +1,67 @@
-import bottle
+try:
+    import bottle
+    from bottlecors import add_cors, abort
+except ImportError:
+    bottle = None
+try:
+    from aiohttp import web as aioweb
+except ImportError:
+    aioweb = None
 from inspect import signature, _empty
 from functools import wraps
 from typing import get_type_hints
-from bottlecors import add_cors, abort
+
+
+class WrongJson(Exception):
+    pass
+
 
 
 class Manager:
-    def __init__(self, bottleapp, *, apiversion='1'):
-        self.app = bottleapp
+    def __init__(self, app, *, apiversion='1'):
+        self.app = app
+        if bottle is not None and isinstance(app, bottle.Bottle):
+            self.kind = 'bottle'
+        elif aioweb is not None and isinstance(app, aioweb.Application):
+            self.kind = 'aio'
+        else:
+            raise Exception('Unknown app framework')
         self.version = str(apiversion)
 
-    def __create_protected_function(self, fn):
+    def __get_args_from_json(self, json, anno, fsig):
+        args = {}
+        # Ensure that all expected are provided
+        for k, kind in anno.items():
+            if k in json:  # They have provided
+                if not isinstance(json[k], kind):  # Kind is wrong
+                    raise WrongJson(f'Wrong type for "{k}"')
+                else:
+                    value = json[k]
+            elif k in fsig.parameters and fsig.parameters[k].default != _empty:
+                # They did not provide and default available
+                value = fsig.parameters[k].default
+            else:  # They did not provide and no default
+                raise WrongJson(f'Please provide "{k}"')
+            args[k] = value
+        return args
+
+    def __get_routes(self):
+        if self.kind == 'bottle':
+            return [(r.rule, r.method, r.callback.__doc__)
+                    for r in self.app.routes]
+        elif self.kind == 'aio':
+            return [(r.resource._path, r.method, r.handler.__doc__)
+                    for r in self.app.router.routes()]
+
+    def __add_post(self, route, function):
+        if self.kind == 'bottle':
+            fn = self.app.post(route)(function)
+        elif self.kind == 'aio':
+            fn = function
+            self.app.router.add_post(route, function)
+        return fn
+
+    def __build_wrapper(self, fn):
         if not hasattr(fn, '__kwdefaults__'):
             raise Exception('''
             All defaults must be keyword args.
@@ -18,29 +69,31 @@ class Manager:
             ''')
 
         anno = get_type_hints(fn)
-        print(anno)
         fsig = signature(fn)
 
-        @wraps(fn)
-        def newfn():
-            if not hasattr(bottle.request, 'json'):
-                abort(415, 'Expected "application/json"')
-            j = bottle.request.json
-            args = {}
-            # Ensure that all expected are provided
-            for k, kind in anno.items():
-                if k in j:  # They have provided
-                    if not isinstance(j[k], kind):  # Kind is wrong
-                        abort(400, f'Wrong type for "{k}"')
-                    else:
-                        value = j[k]
-                elif k in fsig.parameters and fsig.parameters[k].default != _empty:
-                    # They did not provide and default available
-                    value = fsig.parameters[k].default
-                else:  # They did not provide and no default
-                    abort(400, f'Please provide "{k}"')
-                args[k] = value
-            return fn(**args)
+        if self.kind == 'bottle':
+            @wraps(fn)
+            def newfn():
+                if bottle.request.json is None:
+                    abort(415, 'Expected "application/json"')
+                j = bottle.request.json
+                try:
+                    args = self.__get_args_from_json(j, anno, fsig)
+                except WrongJson as e:
+                    abort(400, str(e))
+                return fn(**args)
+        elif self.kind == 'aio':
+            @wraps(fn)
+            async def newfn(request):
+                if request.content_type != 'application/json':
+                    raise aioweb.HTTPUnsupportedMediaType(text='Expected "application/json"')
+                j = await request.json()
+                try:
+                    args = self.__get_args_from_json(j, anno, fsig)
+                except WrongJson as e:
+                    raise aioweb.HTTPBadRequest(text=str(e))
+                ret = await fn(**args)
+                return aioweb.json_response(ret)
 
         doc = f'''
         POST application/json
@@ -57,23 +110,24 @@ class Manager:
     def api(self, fn):
         uri = fn.__name__.replace('_', '/')
         uri = '/' + self.version + '/' + uri.lstrip('/')
-        fn = self.__create_protected_function(fn)
-        fn = self.app.post(uri)(fn)
+        fn = self.__build_wrapper(fn)
+        fn = self.__add_post(uri, fn)
         return fn
 
     def add_cors(self, **kw):
-        apidocstrings = {}
-        for route in self.app.routes:
-            apidocstrings[route.rule, route.method] = route.callback.__doc__
-        self.app = add_cors(self.app, **kw)
+        if self.kind == 'bottle':
+            self.app = add_cors(self.app, **kw)
+        elif self.kind == 'aio':
 
-        @self.app.get(f'/{self.version}/docs')
-        def doc_fn():
-            docs = f'''<html> <body> <h1> API Docs version {self.version}</h1>'''
-            docs += '''Calling each API with the OPTIONS method return's it's documentation'''
-            for k, v in apidocstrings.items():
-                docs += f'''<h2>{k[1]}  {k[0]}</h2><pre>{v}</pre><hr>'''
-            docs += ''' </body> </html> '''
-            return docs
+            def docfn(doc):
+                async def fn(request):
+                    return aioweb.Response(text=doc)
+                return fn
+
+            for rule, method, doc in self.__get_routes():
+                self.app.router.add_route('OPTIONS', rule, docfn(doc))
+
+        for rule, method, _ in self.__get_routes():
+            print(method, rule)
 
         return self.app

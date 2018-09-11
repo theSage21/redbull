@@ -10,7 +10,7 @@ Quickly develop JSON apis.
 - You're not locked in. You can still code the old way.
 
 
-Example
+Bottle Example
 -----
 
 ```python
@@ -29,4 +29,26 @@ def say_hi(name: str, please: bool):
 
 mg.add_cors()
 mg.app.run()
+```
+
+
+Aiohttp Example
+-----
+
+```python
+from aiohttp import web
+from redbull import Manager
+
+mg = Manager(web.Application(),
+             apiversion='1')
+
+@mg.api
+async def say_hi(name: str, please: bool):
+    "Says hi if you say please"
+    if please:
+        return 'hi ' + name
+    return 'um hmm'
+
+mg.add_cors()
+web.run_app(mg.app)
 ```

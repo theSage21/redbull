@@ -6,6 +6,8 @@ name = "pypi"
 [packages]
 bottlecors = "*"
 bottle = "*"
+redbull = {editable = true, path = "."}
+aiohttp = "*"
 
 [dev-packages]
 pytest = "*"
