@@ -98,7 +98,6 @@ class Manager:
                 ret = 'ok' if ret is None else ret
                 return aioweb.json_response(ret)
         doc = f'''
-        ==============================
         {self.__make_uri(fn.__name__)}
         application/json
         ------------------------------
@@ -108,7 +107,6 @@ class Manager:
         ------------------------------
 
         {fn.__doc__}
-        ==============================
         '''
         newfn.__doc__ = doc.replace('<', '&lt;').replace('>', '&gt;')
         return newfn
