@@ -123,13 +123,22 @@ class Manager:
         return fn
 
     def __add_cors(self, **kw):
+        cors_string = 'Origin, Accept , Content-Type, X-Requested-With, X-CSRF-Token'
+        headers = {'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
+                   'Access-Control-Allow-Headers': cors_string,
+                   'Access-Control-Allow-Credentials': 'true'}
         if self.kind == 'bottle':
             self.app = add_cors(self.app, **kw)
         elif self.kind == 'aio':
 
             def docfn(doc, method):
                 async def fn(request):
-                    return aioweb.Response(text=f'{method}\n{doc}')
+                    h = dict(headers)
+                    origin = request.headers.get('Origin')
+                    origin = '*' if origin is None else origin
+                    h['Access-Control-Allow-Origin'] = origin
+                    return aioweb.Response(text=f'{method}\n{doc}',
+                                           headers=h)
                 return fn
 
             for rule, method, doc in self.__get_routes():
