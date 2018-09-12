@@ -36,7 +36,8 @@ def say_hi(name: str, please: bool):
     return 'um hmm'
 
 # ADD a generous CORS for all routes using the OPTIONS method
-mg.add_cors()
+# Add a `/<version>/docs` GET Page
+mg.finalise()
 mg.app.run()
 ```
 
@@ -63,6 +64,7 @@ async def say_hi(name: str, please: bool, lastname: str='Snow'):
     return 'um hmm'
 
 # ADD a generous CORS for all routes using the OPTIONS method
-mg.add_cors()
+# Add a `/<version>/docs` GET Page
+mg.finalise()
 web.run_app(mg.app)
 ```

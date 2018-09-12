@@ -13,6 +13,5 @@ async def say_hi(name: str, please: bool):
     return 'um hmm'
 
 
-mg.add_cors()
-mg.add_docs()
+mg.finalize()
 web.run_app(mg.app)

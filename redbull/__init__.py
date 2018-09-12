@@ -97,46 +97,53 @@ class Manager:
                 ret = await fn(**args)
                 ret = 'ok' if ret is None else ret
                 return aioweb.json_response(ret)
-
         doc = f'''
-        POST application/json
         ==============================
+        {self.__make_uri(fn.__name__)}
+        application/json
+        ------------------------------
 
         {anno}
 
-        ==============================
+        ------------------------------
+
         {fn.__doc__}
+        ==============================
         '''
-        newfn.__doc__ = doc
+        newfn.__doc__ = doc.replace('<', '&lt;').replace('>', '&gt;')
         return newfn
 
-    def api(self, fn):
-        uri = fn.__name__.replace('_', '/')
+    def __make_uri(self, name):
+        uri = name.replace('_', '/')
         uri = '/' + self.version + '/' + uri.lstrip('/')
+        return uri
+
+    def api(self, fn):
+        uri = self.__make_uri(fn.__name__)
         fn = self.__build_wrapper(fn)
         fn = self.__add_post(uri, fn)
         return fn
 
-    def add_cors(self, **kw):
+    def __add_cors(self, **kw):
         if self.kind == 'bottle':
             self.app = add_cors(self.app, **kw)
         elif self.kind == 'aio':
 
-            def docfn(doc):
+            def docfn(doc, method):
                 async def fn(request):
-                    return aioweb.Response(text=doc)
+                    return aioweb.Response(text=f'{method}\n{doc}')
                 return fn
 
             for rule, method, doc in self.__get_routes():
-                self.app.router.add_route('OPTIONS', rule, docfn(doc))
-
-        for rule, method, _ in self.__get_routes():
-            print(method, rule)
-
+                print(rule, method)
+                try:
+                    self.app.router.add_route('OPTIONS', rule, docfn(doc, method))
+                except RuntimeError:
+                    pass
         return self.app
 
-    def add_docs(self):
-        api_list = list(sorted([url for url, _, _ in self.__get_routes()]))
+    def __add_docs(self):
+        api_list = list(sorted([url for url, method, _ in self.__get_routes()]))
         if self.kind == 'bottle':
             @self.app.get(f'/{self.version}/docs')
             def docs():
@@ -147,3 +154,7 @@ class Manager:
                                        content_type='text/html')
 
             self.app.router.add_get(f'/{self.version}/docs', docgen)
+
+    def finalize(self):
+        self.__add_docs()
+        self.__add_cors()
