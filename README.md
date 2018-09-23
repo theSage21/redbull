@@ -5,9 +5,10 @@ Quickly develop JSON apis.
 
 
 - Auto OPTIONS
-- All APIs are JSON, POST.
+- All APIs are JSON, POST by default.
 - Using static types APIs are auto-documented at `/<version>/docs`
-- You're not locked in. You can still code the old way.
+- You're not locked in. You can still code the way your framework of choice expects you to.
+- You can use any framework you want (Bottle, Flask, Django, Aiohttp ...)
 
 
 Bottle Example
@@ -68,3 +69,9 @@ async def say_hi(name: str, please: bool, lastname: str='Snow'):
 mg.finalise()
 web.run_app(mg.app)
 ```
+
+Todo
+----
+
+- [ ] Flask
+- [ ] Django
