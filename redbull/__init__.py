@@ -73,7 +73,7 @@ class Manager:
 
         if self.kind == 'bottle':
             @wraps(fn)
-            def newfn():
+            def newfn(*original_a, **original_kw):
                 if bottle.request.json is None:
                     abort(415, 'Expected "application/json"')
                 j = bottle.request.json
@@ -81,12 +81,15 @@ class Manager:
                     args = self.__get_args_from_json(j, anno, fsig)
                 except WrongJson as e:
                     abort(400, str(e))
+                args['__args__'] = original_a
+                args['__kwargs__'] = original_kw
                 ret = fn(**args)
                 ret = 'ok' if ret is None else ret
                 return ret
         elif self.kind == 'aio':
             @wraps(fn)
-            async def newfn(request):
+            async def newfn(*original_a, **original_kw):
+                request = original_a[0]
                 if request.content_type != 'application/json':
                     raise aioweb.HTTPUnsupportedMediaType(text='Expected "application/json"')
                 j = await request.json()
@@ -94,6 +97,8 @@ class Manager:
                     args = self.__get_args_from_json(j, anno, fsig)
                 except WrongJson as e:
                     raise aioweb.HTTPBadRequest(text=str(e))
+                args['__args__'] = original_a
+                args['__kwargs__'] = original_kw
                 ret = await fn(**args)
                 ret = 'ok' if ret is None else ret
                 return aioweb.json_response(ret)

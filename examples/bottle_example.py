@@ -5,7 +5,7 @@ mg = Manager(bottle.Bottle())
 
 
 @mg.api
-def say_hi(name: str, please: bool):
+def say_hi(name: str, please: bool, __args__, __kwargs__):
     "Says hi if you say please"
     if please:
         return 'hi ' + name
