@@ -170,3 +170,6 @@ class Manager:
     def finalize(self):
         self.__add_docs()
         self.__add_cors()
+
+    def finalise(self):
+        self.finalize()
