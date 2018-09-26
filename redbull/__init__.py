@@ -1,6 +1,5 @@
 try:
     import bottle
-    from bottlecors import add_cors, abort
 except ImportError:
     bottle = None
 try:
@@ -13,7 +12,49 @@ from typing import get_type_hints
 from .doc_html import gen_doc_html
 
 
+def cors_dict__(origin=None):
+    "Generate a CORS header string given the origin"
+    origin = '*' if origin is None else origin
+    cors_string = 'Origin, Accept , Content-Type, X-Requested-With, X-CSRF-Token'
+    CORS_HEADERS = {'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
+                    'Access-Control-Allow-Headers': cors_string,
+                    'Access-Control-Allow-Credentials': 'true',
+                    'Access-Control-Allow-Origin': origin}
+    return CORS_HEADERS
+
+
+def bottleabort__(code=500, text='Unknown Error.'):
+    " Aborts execution and causes a HTTP error while adding CORS "
+    origin = bottle.request.headers.get('Origin')
+    d = cors_dict__(origin)
+    raise bottle.HTTPError(code, text, **d)
+
+
+def bottle_add_cors__(app, allow_credentials=True):
+    @app.hook('after_request')
+    def add_cors_headers():
+        origin = bottle.request.headers.get('Origin')
+        d = cors_dict__(origin)
+        bottle.response.headers.update(d)
+
+    def docstring_fn(fn, method):
+        def newfn():
+            return method + '\n' + fn.__doc__
+        return newfn
+
+    new_routes = []
+    for route in app.routes:
+        if route.method != 'OPTIONS':
+            new_routes.append((route.rule, docstring_fn(route.callback,
+                                                        route.method)))
+    for r, fn in new_routes:
+        app.route(r, method=['OPTIONS'])(fn)
+
+    return app
+
+
 class WrongJson(Exception):
+    "Wrong JSON was provided"
     pass
 
 
@@ -25,10 +66,12 @@ class Manager:
         elif aioweb is not None and isinstance(app, aioweb.Application):
             self.kind = 'aio'
         else:
-            raise Exception('Unknown app framework')
+            msg = f'Unknown app type {type(app)}'
+            raise Exception(msg)
         self.version = str(apiversion)
 
     def __get_args_from_json(self, json, anno, fsig):
+        "Given Json, annotations, and a function signature validate it"
         args = {}
         # Ensure that all expected are provided
         for k, kind in anno.items():
@@ -46,6 +89,7 @@ class Manager:
         return args
 
     def __get_routes(self):
+        "Return a standard iterator over the routes in the app"
         if self.kind == 'bottle':
             return [(r.rule, r.method, r.callback.__doc__)
                     for r in self.app.routes]
@@ -57,11 +101,15 @@ class Manager:
         if self.kind == 'bottle':
             fn = self.app.post(route)(function)
         elif self.kind == 'aio':
-            fn = function
+            fn = function  # no wrapping needed
             self.app.router.add_post(route, function)
         return fn
 
     def __build_wrapper(self, fn):
+        """
+        Given a function, build it's wrapper which
+        performs the JSON validation etc.
+        """
         if not hasattr(fn, '__kwdefaults__'):
             raise Exception('''
             All defaults must be keyword args.
@@ -75,12 +123,12 @@ class Manager:
             @wraps(fn)
             def newfn(*original_a, **original_kw):
                 if bottle.request.json is None:
-                    abort(415, 'Expected "application/json"')
+                    bottleabort__(415, 'Expected "application/json"')
                 j = bottle.request.json
                 try:
                     args = self.__get_args_from_json(j, anno, fsig)
                 except WrongJson as e:
-                    abort(400, str(e))
+                    bottleabort__(400, str(e))
                 args['__args__'] = original_a
                 args['__kwargs__'] = original_kw
                 ret = fn(**args)
@@ -117,37 +165,32 @@ class Manager:
         return newfn
 
     def __make_uri(self, name):
+        "Turn a function name into a URL"
         uri = name.replace('_', '/')
         uri = '/' + self.version + '/' + uri.lstrip('/')
         return uri
 
     def api(self, fn):
+        "Register function as API"
         uri = self.__make_uri(fn.__name__)
         fn = self.__build_wrapper(fn)
         fn = self.__add_post(uri, fn)
         return fn
 
     def __add_cors(self, **kw):
-        cors_string = 'Origin, Accept , Content-Type, X-Requested-With, X-CSRF-Token'
-        headers = {'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
-                   'Access-Control-Allow-Headers': cors_string,
-                   'Access-Control-Allow-Credentials': 'true'}
         if self.kind == 'bottle':
-            self.app = add_cors(self.app, **kw)
+            self.app = bottle_add_cors__(self.app, **kw)
         elif self.kind == 'aio':
 
             def docfn(doc, method):
                 async def fn(request):
-                    h = dict(headers)
                     origin = request.headers.get('Origin')
-                    origin = '*' if origin is None else origin
-                    h['Access-Control-Allow-Origin'] = origin
+                    h = cors_dict__(origin)
                     return aioweb.Response(text=f'{method}\n{doc}',
                                            headers=h)
                 return fn
 
             for rule, method, doc in self.__get_routes():
-                print(rule, method)
                 try:
                     self.app.router.add_route('OPTIONS', rule, docfn(doc, method))
                 except RuntimeError:
