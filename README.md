@@ -3,34 +3,29 @@ RedBull
 
 Quickly develop JSON apis.
 
+Bottle Example
+-----
+
+```python
+from redbull import Manager
+
+mg = Manager()
+
+@mg.api()
+def say_hi(name: str, please: bool):
+    "Says hi if you say please"
+    if please:
+        return 'hi ' + name
+    return 'um hmm'
+
+mg.run()  # or finaise.
+```
 
 - Auto OPTIONS
 - All APIs are JSON, POST by default.
 - Using static types APIs are auto-documented at `/<version>/docs`
 - You're not locked in. You can still code the way your framework of choice expects you to.
 - You can use any framework you want (Bottle, Flask, Django, Aiohttp ...)
-
-
-Bottle Example
------
-
-```python
-import bottle
-from redbull import Manager
-
-mg = Manager(bottle.Bottle(),
-             apiversion='1')
-
-@mg.api
-def say_hi(name: str, please: bool, __args__, __kwargs__):
-    "Says hi if you say please"
-    if please:
-        return 'hi ' + name
-    return 'um hmm'
-
-mg.finalize()  # or finaise.
-mg.app.run()
-```
 
 This gives you a live docs page like:
 
