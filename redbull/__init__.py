@@ -59,7 +59,12 @@ class WrongJson(Exception):
 
 
 class Manager:
-    def __init__(self, app, *, apiversion='1'):
+    def __init__(self, app=None, *, apiversion='1'):
+        if app is None:
+            app = bottle.Bottle()
+            if bottle is None:
+                print('Either provide a framework or install Bottle')
+
         self.app = app
         if bottle is not None and isinstance(app, bottle.Bottle):
             self.kind = 'bottle'
@@ -105,7 +110,7 @@ class Manager:
             self.app.router.add_post(route, function)
         return fn
 
-    def __build_wrapper(self, fn):
+    def __build_wrapper(self, fn, pass_args):
         """
         Given a function, build it's wrapper which
         performs the JSON validation etc.
@@ -129,8 +134,9 @@ class Manager:
                     args = self.__get_args_from_json(j, anno, fsig)
                 except WrongJson as e:
                     bottleabort__(400, str(e))
-                args['__args__'] = original_a
-                args['__kwargs__'] = original_kw
+                if pass_args:
+                    args['__args__'] = original_a
+                    args['__kwargs__'] = original_kw
                 ret = fn(**args)
                 ret = 'ok' if ret is None else ret
                 return ret
@@ -145,8 +151,9 @@ class Manager:
                     args = self.__get_args_from_json(j, anno, fsig)
                 except WrongJson as e:
                     raise aioweb.HTTPBadRequest(text=str(e))
-                args['__args__'] = original_a
-                args['__kwargs__'] = original_kw
+                if pass_args:
+                    args['__args__'] = original_a
+                    args['__kwargs__'] = original_kw
                 ret = await fn(**args)
                 ret = 'ok' if ret is None else ret
                 return aioweb.json_response(ret)
@@ -170,12 +177,14 @@ class Manager:
         uri = '/' + self.version + '/' + uri.lstrip('/')
         return uri
 
-    def api(self, fn):
+    def api(self, *, pass_args=False):
         "Register function as API"
-        uri = self.__make_uri(fn.__name__)
-        fn = self.__build_wrapper(fn)
-        fn = self.__add_post(uri, fn)
-        return fn
+        def api_wrapper(fn):
+            uri = self.__make_uri(fn.__name__)
+            fn = self.__build_wrapper(fn, pass_args)
+            fn = self.__add_post(uri, fn)
+            return fn
+        return api_wrapper
 
     def __add_cors(self, **kw):
         if self.kind == 'bottle':
@@ -216,3 +225,10 @@ class Manager:
 
     def finalise(self):
         self.finalize()
+
+    def run(self, **kw):
+        self.finalize()
+        if self.kind == 'bottle':
+            self.app.run(**kw)
+        elif self.kind == 'aio':
+            aioweb.run_app(self.app, **kw)
