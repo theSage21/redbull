@@ -18,7 +18,7 @@ def say_hi(name: str, please: bool):
         return 'hi ' + name
     return 'um hmm'
 
-mg.run()  # or finaise.
+mg.run()
 ```
 
 - Auto OPTIONS
