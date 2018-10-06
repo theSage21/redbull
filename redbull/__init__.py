@@ -59,7 +59,7 @@ class WrongJson(Exception):
 
 
 class Manager:
-    def __init__(self, app=None, *, apiversion='1'):
+    def __init__(self, app=None, *, apiversion=''):
         if app is None:
             app = bottle.Bottle()
             if bottle is None:
@@ -174,7 +174,10 @@ class Manager:
     def __make_uri(self, name):
         "Turn a function name into a URL"
         uri = name.replace('_', '/')
-        uri = '/' + self.version + '/' + uri.lstrip('/')
+        if self.version != '':
+            uri = '/' + self.version + '/' + uri.lstrip('/')
+        else:
+            uri = '/' + uri.lstrip('/')
         return uri
 
     def api(self, *, pass_args=False):
