@@ -12,11 +12,9 @@ from redbull import Manager
 mg = Manager()
 
 @mg.api()
-def say_hi(name: str, please: bool):
-    "Says hi if you say please"
-    if please:
-        return 'hi ' + name
-    return 'um hmm'
+def say_Hello(name: str='World'):
+    "Says hello if you provide a name"
+    return f'Hello {name}.'
 
 mg.run()
 ```
