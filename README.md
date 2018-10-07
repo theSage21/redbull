@@ -21,7 +21,7 @@ def say_hi(name: str, please: bool):
 mg.run()
 ```
 
-- Auto OPTIONS
+- Automatic OPTIONS urls are added.
 - All APIs are JSON, POST by default.
 - Using static types APIs are auto-documented at `/<version>/docs`
 - You're not locked in. You can still code the way your framework of choice expects you to.
@@ -39,14 +39,13 @@ Aiohttp Example
 from aiohttp import web
 from redbull import Manager
 
-mg = Manager(web.Application(),
-             apiversion='1')
+mg = Manager(web.Application())
 
 # The function name say_hi becomes the api say/hi
 # the args are treated as JSON keys. All args must by type annotated
 # optional args are supported
 # Simply return dict/string. Redbull wraps it for you in the appropriate object
-@mg.api
+@mg.api(pass_args=True)
 async def say_hi(name: str,
                  please: bool,
                  lastname: str='Snow',  # A default is provided
@@ -59,8 +58,7 @@ async def say_hi(name: str,
 
 # ADD a generous CORS for all routes using the OPTIONS method
 # Add a `/<version>/docs` GET Page
-mg.finalise()
-web.run_app(mg.app)
+mg.run()
 ```
 
 Todo
